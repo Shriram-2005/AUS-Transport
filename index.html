@@ -1,0 +1,551 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUS Transport | Billing System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════╗ -->
+<!-- ║         LOGIN SCREEN          ║ -->
+<!-- ╚══════════════════════════════╝ -->
+<div id="login-screen" class="screen active">
+    <div class="bg-grid"></div>
+    <div class="login-card">
+        <div class="login-logo">🚛</div>
+        <h1 class="login-title">A U S TRANSPORT</h1>
+        <p class="login-sub">Billing System &mdash; Sign In</p>
+        <div class="login-form">
+            <div class="login-field">
+                <label>Username</label>
+                <input type="text" id="login-user" placeholder="Enter username" autocomplete="username">
+            </div>
+            <div class="login-field">
+                <label>Password</label>
+                <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password">
+            </div>
+            <div id="login-error" class="login-error">Invalid credentials. Please try again.</div>
+            <button id="login-btn" class="btn-primary login-btn-full">Sign In →</button>
+        </div>
+    </div>
+</div>
+
+<!-- ╔══════════════════════════════╗ -->
+<!-- ║       DASHBOARD SCREEN        ║ -->
+<!-- ╚══════════════════════════════╝ -->
+<div id="dashboard-screen" class="screen">
+    <div class="dash-header">
+        <div class="dash-title">
+            <span class="dash-logo">🚛</span>
+            <div>
+                <h2>AUS Transport</h2>
+                <span>Bills Dashboard</span>
+            </div>
+        </div>
+        <div class="dash-actions">
+            <button id="new-bill-btn" class="btn-primary">+ New Bill</button>
+            <button id="logout-btn-dash" class="btn-outline-dash">Logout</button>
+        </div>
+    </div>
+    <div class="dash-body">
+        <div id="bills-list" class="bills-list">
+            <div class="bills-loading">⏳ Loading bills...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ╔══════════════════════════════╗ -->
+<!-- ║       WORKSPACE SCREEN       ║ -->
+<!-- ╚══════════════════════════════╝ -->
+<div id="workspace-screen" class="screen">
+
+    <!-- ── LEFT EDITOR PANEL ── -->
+    <div class="editor-panel">
+        <div class="panel-header">
+            <div class="panel-header-top">
+                <div class="panel-header-left">
+                    <div class="panel-icon">📋</div>
+                    <div>
+                        <h2>Bill Details</h2>
+                        <div class="panel-sub">AUS Transport Billing</div>
+                    </div>
+                </div>
+                <button id="logout-btn-ws" class="btn-logout-ws" title="Logout">↪</button>
+            </div>
+            <div class="header-actions">
+                <button id="back-btn" class="hdr-btn hdr-btn-ghost">← Bills</button>
+                <button id="save-btn" class="hdr-btn hdr-btn-green">💾 Save</button>
+                <button id="complete-btn" class="hdr-btn hdr-btn-teal">✓ Done</button>
+                <button id="download-btn" class="hdr-btn hdr-btn-blue">⬇ PDF</button>
+            </div>
+        </div>
+
+        <div class="form-container">
+
+            <!-- ── GLOBAL HEADER INFO ── -->
+            <div class="section-title"><span class="s-dot"></span>Bill Header</div>
+
+            <div class="input-grid-3">
+                <div class="input-group">
+                    <label>Bill No.</label>
+                    <input type="text" id="in-bill" value="389" oninput="syncField('in-bill','out-bill')">
+                </div>
+                <div class="input-group">
+                    <label>Date</label>
+                    <input type="text" id="in-date" value="28-02-2026" oninput="syncDateAll()">
+                </div>
+                <div class="input-group">
+                    <label>Vehicle No.</label>
+                    <input type="text" id="in-vehicle" value="TN76 AK 1094" oninput="syncField('in-vehicle','out-vehicle')">
+                </div>
+            </div>
+
+            <div class="input-grid">
+                <div class="input-group">
+                    <label>Diesel Rate (₹/L)</label>
+                    <input type="number" id="in-diesel-rate" value="93.38" step="0.01" oninput="recalcAll()">
+                </div>
+                <div class="input-group">
+                    <label>Freight Rate (₹/KM)</label>
+                    <input type="number" id="in-freight-rate" value="20.27" step="0.01" oninput="recalcAll()">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="kerala-toggle-row">
+                    <label>Kerala Checkpost (₹)</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="kerala-toggle" checked onchange="toggleKerala()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <input type="number" id="in-kerala" value="280" oninput="recalcAll()">
+            </div>
+
+            <!-- ── TRIP TABS ── -->
+            <div class="section-title" style="margin-top:18px"><span class="s-dot"></span>Trips (1–6)</div>
+
+            <div class="trip-tabs">
+                <button class="trip-tab active" onclick="switchTrip(1,this)">T1</button>
+                <button class="trip-tab" onclick="switchTrip(2,this)">T2</button>
+                <button class="trip-tab" onclick="switchTrip(3,this)">T3</button>
+                <button class="trip-tab" onclick="switchTrip(4,this)">T4</button>
+                <button class="trip-tab" onclick="switchTrip(5,this)">T5</button>
+                <button class="trip-tab" onclick="switchTrip(6,this)">T6</button>
+            </div>
+
+            <!-- TRIP 1 -->
+            <div class="trip-form active" id="trip-form-1">
+                <div class="input-grid">
+                    <div class="input-group"><label>Trip Date</label><input type="text" id="t1-date" value="28-02-2026" oninput="syncTripField(1,'date')"></div>
+                    <div class="input-group"><label>DC No.</label><input type="text" id="t1-dc" value="165297" oninput="syncTripField(1,'dc')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>No. of Chicks</label><input type="text" id="t1-chicks" value="19760" oninput="syncTripField(1,'chicks')"></div>
+                    <div class="input-group"><label>Place / Destination</label><input type="text" id="t1-place" value="PALAMANER &amp; KOLAR" oninput="syncTripField(1,'place')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Start KM</label><input type="number" id="t1-start" value="296109" oninput="recalcTrip(1)"></div>
+                    <div class="input-group"><label>Close KM</label><input type="number" id="t1-close" value="297147" oninput="recalcTrip(1)"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Running KM <span class="auto-tag">AUTO</span></label><input type="number" id="t1-run" value="1038" readonly></div>
+                    <div class="input-group"><label>Amount ₹ <span class="auto-tag">AUTO</span></label><input type="number" id="t1-amt" value="21040" oninput="recalcAll()"></div>
+                </div>
+                <div class="input-group"><label>Toll Gate (₹)</label><input type="number" id="t1-toll" value="1610" oninput="recalcAll()"></div>
+            </div>
+
+            <!-- TRIP 2 -->
+            <div class="trip-form" id="trip-form-2">
+                <div class="input-grid">
+                    <div class="input-group"><label>Trip Date</label><input type="text" id="t2-date" value="27-02-2026" oninput="syncTripField(2,'date')"></div>
+                    <div class="input-group"><label>DC No.</label><input type="text" id="t2-dc" value="165298" oninput="syncTripField(2,'dc')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>No. of Chicks</label><input type="text" id="t2-chicks" value="22260" oninput="syncTripField(2,'chicks')"></div>
+                    <div class="input-group"><label>Place / Destination</label><input type="text" id="t2-place" value="CHINTHAMANI &amp; V.KOTTA" oninput="syncTripField(2,'place')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Start KM</label><input type="number" id="t2-start" value="297147" oninput="recalcTrip(2)"></div>
+                    <div class="input-group"><label>Close KM</label><input type="number" id="t2-close" value="298149" oninput="recalcTrip(2)"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Running KM <span class="auto-tag">AUTO</span></label><input type="number" id="t2-run" value="1002" readonly></div>
+                    <div class="input-group"><label>Amount ₹ <span class="auto-tag">AUTO</span></label><input type="number" id="t2-amt" value="20311" oninput="recalcAll()"></div>
+                </div>
+                <div class="input-group"><label>Toll Gate (₹)</label><input type="number" id="t2-toll" value="1250" oninput="recalcAll()"></div>
+            </div>
+
+            <!-- TRIP 3 -->
+            <div class="trip-form" id="trip-form-3">
+                <div class="input-grid">
+                    <div class="input-group"><label>Trip Date</label><input type="text" id="t3-date" value="" oninput="syncTripField(3,'date')"></div>
+                    <div class="input-group"><label>DC No.</label><input type="text" id="t3-dc" value="" oninput="syncTripField(3,'dc')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>No. of Chicks</label><input type="text" id="t3-chicks" value="" oninput="syncTripField(3,'chicks')"></div>
+                    <div class="input-group"><label>Place / Destination</label><input type="text" id="t3-place" value="" oninput="syncTripField(3,'place')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Start KM</label><input type="number" id="t3-start" value="" oninput="recalcTrip(3)"></div>
+                    <div class="input-group"><label>Close KM</label><input type="number" id="t3-close" value="" oninput="recalcTrip(3)"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Running KM <span class="auto-tag">AUTO</span></label><input type="number" id="t3-run" value="" readonly></div>
+                    <div class="input-group"><label>Amount ₹ <span class="auto-tag">AUTO</span></label><input type="number" id="t3-amt" value="" oninput="recalcAll()"></div>
+                </div>
+                <div class="input-group"><label>Toll Gate (₹)</label><input type="number" id="t3-toll" value="" oninput="recalcAll()"></div>
+            </div>
+
+            <!-- TRIP 4 -->
+            <div class="trip-form" id="trip-form-4">
+                <div class="input-grid">
+                    <div class="input-group"><label>Trip Date</label><input type="text" id="t4-date" value="" oninput="syncTripField(4,'date')"></div>
+                    <div class="input-group"><label>DC No.</label><input type="text" id="t4-dc" value="" oninput="syncTripField(4,'dc')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>No. of Chicks</label><input type="text" id="t4-chicks" value="" oninput="syncTripField(4,'chicks')"></div>
+                    <div class="input-group"><label>Place / Destination</label><input type="text" id="t4-place" value="" oninput="syncTripField(4,'place')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Start KM</label><input type="number" id="t4-start" value="" oninput="recalcTrip(4)"></div>
+                    <div class="input-group"><label>Close KM</label><input type="number" id="t4-close" value="" oninput="recalcTrip(4)"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Running KM <span class="auto-tag">AUTO</span></label><input type="number" id="t4-run" value="" readonly></div>
+                    <div class="input-group"><label>Amount ₹ <span class="auto-tag">AUTO</span></label><input type="number" id="t4-amt" value="" oninput="recalcAll()"></div>
+                </div>
+                <div class="input-group"><label>Toll Gate (₹)</label><input type="number" id="t4-toll" value="" oninput="recalcAll()"></div>
+            </div>
+
+            <!-- TRIP 5 -->
+            <div class="trip-form" id="trip-form-5">
+                <div class="input-grid">
+                    <div class="input-group"><label>Trip Date</label><input type="text" id="t5-date" value="" oninput="syncTripField(5,'date')"></div>
+                    <div class="input-group"><label>DC No.</label><input type="text" id="t5-dc" value="" oninput="syncTripField(5,'dc')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>No. of Chicks</label><input type="text" id="t5-chicks" value="" oninput="syncTripField(5,'chicks')"></div>
+                    <div class="input-group"><label>Place / Destination</label><input type="text" id="t5-place" value="" oninput="syncTripField(5,'place')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Start KM</label><input type="number" id="t5-start" value="" oninput="recalcTrip(5)"></div>
+                    <div class="input-group"><label>Close KM</label><input type="number" id="t5-close" value="" oninput="recalcTrip(5)"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Running KM <span class="auto-tag">AUTO</span></label><input type="number" id="t5-run" value="" readonly></div>
+                    <div class="input-group"><label>Amount ₹ <span class="auto-tag">AUTO</span></label><input type="number" id="t5-amt" value="" oninput="recalcAll()"></div>
+                </div>
+                <div class="input-group"><label>Toll Gate (₹)</label><input type="number" id="t5-toll" value="" oninput="recalcAll()"></div>
+            </div>
+
+            <!-- TRIP 6 -->
+            <div class="trip-form" id="trip-form-6">
+                <div class="input-grid">
+                    <div class="input-group"><label>Trip Date</label><input type="text" id="t6-date" value="" oninput="syncTripField(6,'date')"></div>
+                    <div class="input-group"><label>DC No.</label><input type="text" id="t6-dc" value="" oninput="syncTripField(6,'dc')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>No. of Chicks</label><input type="text" id="t6-chicks" value="" oninput="syncTripField(6,'chicks')"></div>
+                    <div class="input-group"><label>Place / Destination</label><input type="text" id="t6-place" value="" oninput="syncTripField(6,'place')"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Start KM</label><input type="number" id="t6-start" value="" oninput="recalcTrip(6)"></div>
+                    <div class="input-group"><label>Close KM</label><input type="number" id="t6-close" value="" oninput="recalcTrip(6)"></div>
+                </div>
+                <div class="input-grid">
+                    <div class="input-group"><label>Running KM <span class="auto-tag">AUTO</span></label><input type="number" id="t6-run" value="" readonly></div>
+                    <div class="input-group"><label>Amount ₹ <span class="auto-tag">AUTO</span></label><input type="number" id="t6-amt" value="" oninput="recalcAll()"></div>
+                </div>
+                <div class="input-group"><label>Toll Gate (₹)</label><input type="number" id="t6-toll" value="" oninput="recalcAll()"></div>
+            </div>
+
+            <!-- ── LIVE SUMMARY ── -->
+            <div class="calc-summary">
+                <div class="summary-row"><span>Trips Subtotal</span><span id="summary-trips">₹ 0</span></div>
+                <div class="summary-row"><span>Tolls + Kerala</span><span id="summary-exp">₹ 0</span></div>
+                <div class="summary-row grand"><span>Grand Total</span><span id="summary-total">₹ 0</span></div>
+            </div>
+
+        </div><!-- /form-container -->
+    </div><!-- /editor-panel -->
+
+    <!-- ── RIGHT PREVIEW PANEL ── -->
+    <div class="preview-panel">
+        <div class="preview-toolbar">📄&nbsp; A4 Live Preview — updates as you type</div>
+        <div class="preview-wrapper">
+
+        <!--==============================================
+            A4 BILL DOCUMENT
+        ================================================-->
+        <div class="a4-container" id="printable-area">
+
+            <!-- ═══ HEADER (fixed) ═══ -->
+            <div class="bill-header">
+
+                <!-- Blessings row -->
+                <div class="blessings-row">
+                    <span class="bless-left">பெரியசாமி துணை</span>
+                    <span class="bless-center"><span class="om-sym">ஓம்</span><br><img src="image.png" class="swami-img" alt="Venkateshwara Swami"><br><span class="freight-label">FREIGHT BILL</span></span>
+                    <span class="bless-right">பெரியகாளி அம்மன் துணை</span>
+                </div>
+
+                <!-- Company band -->
+                <div class="company-band">
+                    <div class="lorry-box">🚛</div>
+                    <div class="company-center">
+                        <div class="co-name">A U S TRANSPORT</div>
+                        <div class="co-addr">NO. 1/2, PERIYAR NAGAR, MEENACHIPURAM, KOLINJIWADI (PO), DHARAPURAM – 638673.</div>
+                        <div class="co-addr">TIRUPPUR (DT), TAMILNADU &nbsp;|&nbsp; STATE CODE – 33</div>
+                    </div>
+                    <div class="lorry-box">🚛</div>
+                </div>
+
+                <!-- PAN / Contact -->
+                <div class="pan-contact">
+                    <div class="pan-side">
+                        <span>PAN NO :&nbsp;<b>ASEPA4112B</b></span>&nbsp;&nbsp;
+                        <span>GST NO :&nbsp;<b>33ASEPA4112B1ZU</b></span>
+                    </div>
+                    <div class="contact-side">
+                        <span>CONT : +91 9486773152 &nbsp;/&nbsp; +91 8453335911</span>&nbsp;&nbsp;
+                        <span>Email : austransportdpm@gmail.com</span>
+                    </div>
+                </div>
+
+                <!-- Bill Meta — ONE LINE -->
+                <div class="bill-meta-line">
+                    <span class="bm-item">BILL NO :–&nbsp;<b id="out-bill">389</b></span>
+                    <span class="bm-sep">|</span>
+                    <span class="bm-item">DATE :–&nbsp;<b id="out-date">28-02-2026</b></span>
+                    <span class="bm-sep">|</span>
+                    <span class="bm-item">VEHICLE NO :–&nbsp;<b id="out-vehicle">TN76 AK 1094</b></span>
+                </div>
+
+                <!-- Supply grid -->
+                <div class="supply-grid">
+                    <div class="supply-col">
+                        <b>SUPPLY FROM :–</b><br>
+                        VENKATESHWARA HATCHERIES PVT LTD.<br>
+                        ADDRESS :– NELAKOTTAI HATCHERIES, NELAKOTTAI, DINDUGUL DT. TAMILNADU.<br>
+                        GST NO :– TAMILNADU &nbsp; 33AAACV7247H1ZB
+                    </div>
+                    <div class="supply-col">
+                        <b>SUPPLY TO :–</b><br>
+                        VENKATESHWARA HATCHERIES PVT LTD.<br>
+                        ADDRESS :– BROILER BRANCH, TAMILNADU, KARNATAKA, ANDHRA &amp; KERALA<br>
+                        GST NO :– TAMILNADU &nbsp; 33AAACV7247H1ZB
+                    </div>
+                </div>
+
+            </div><!-- /bill-header -->
+
+            <!-- ═══ BODY TABLE (grows to fill middle) ═══ -->
+            <div class="bill-body">
+              <table class="bill-table">
+                <colgroup>
+                    <col style="width:10%"><!-- DATE -->
+                    <col style="width:8%"> <!-- DC NO -->
+                    <col style="width:10%"><!-- CHICKS -->
+                    <col style="width:13%"><!-- PLACE -->
+                    <col style="width:8%"> <!-- Start KM -->
+                    <col style="width:8%"> <!-- Close KM -->
+                    <col style="width:8%"> <!-- Run KM -->
+                    <col style="width:8%"> <!-- Diesel -->
+                    <col style="width:9%"> <!-- Freight -->
+                    <col style="width:18%"><!-- AMOUNT -->
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>DATE</th>
+                        <th>DC NO</th>
+                        <th>No. of<br>Chicks</th>
+                        <th>Place /<br>Destination</th>
+                        <th>Starting<br>KM</th>
+                        <th>Closing<br>KM</th>
+                        <th>Running<br>KM</th>
+                        <th>Diesel<br>Rate</th>
+                        <th>Freight<br>Rate/KM</th>
+                        <th>AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- ─ Trip 1 ─ -->
+                    <tr class="data-row">
+                        <td class="c-date"><span id="b-t1-date">28-02-2026</span></td>
+                        <td><span id="b-t1-dc">165297</span></td>
+                        <td class="c-num"><span id="b-t1-chicks">19760</span></td>
+                        <td class="c-part"><span id="b-t1-place">PALAMANER &amp; KOLAR</span></td>
+                        <td><span id="b-t1-start">296109</span></td>
+                        <td><span id="b-t1-close">297147</span></td>
+                        <td><span id="b-t1-run">1038</span></td>
+                        <td><span id="b-t1-diesel">93.38</span></td>
+                        <td><span id="b-t1-freight">20.27</span></td>
+                        <td class="c-amt"><span id="b-t1-amt">21040</span></td>
+                    </tr>
+                    <tr class="expense-row">
+                        <td colspan="2" class="nb"></td>
+                        <td colspan="2" class="c-part exp-lbl" id="b-t1-toll-lbl">TOLL GATE EXPENSES</td>
+                        <td colspan="5" class="nb"></td>
+                        <td class="c-amt"><span id="b-t1-toll">1610</span></td>
+                    </tr>
+                    <!-- ─ Trip 2 ─ -->
+                    <tr class="data-row">
+                        <td class="c-date"><span id="b-t2-date">27-02-2026</span></td>
+                        <td><span id="b-t2-dc">165298</span></td>
+                        <td class="c-num"><span id="b-t2-chicks">22260</span></td>
+                        <td class="c-part"><span id="b-t2-place">CHINTHAMANI &amp; V.KOTTA</span></td>
+                        <td><span id="b-t2-start">297147</span></td>
+                        <td><span id="b-t2-close">298149</span></td>
+                        <td><span id="b-t2-run">1002</span></td>
+                        <td><span id="b-t2-diesel">93.38</span></td>
+                        <td><span id="b-t2-freight">20.27</span></td>
+                        <td class="c-amt"><span id="b-t2-amt">20311</span></td>
+                    </tr>
+                    <tr class="expense-row">
+                        <td colspan="2" class="nb"></td>
+                        <td colspan="2" class="c-part exp-lbl" id="b-t2-toll-lbl">TOLL GATE EXPENSES</td>
+                        <td colspan="5" class="nb"></td>
+                        <td class="c-amt"><span id="b-t2-toll">1250</span></td>
+                    </tr>
+                    <!-- ─ Trip 3 ─ -->
+                    <tr class="data-row">
+                        <td class="c-date"><span id="b-t3-date"></span></td>
+                        <td><span id="b-t3-dc"></span></td>
+                        <td class="c-num"><span id="b-t3-chicks"></span></td>
+                        <td class="c-part"><span id="b-t3-place"></span></td>
+                        <td><span id="b-t3-start"></span></td>
+                        <td><span id="b-t3-close"></span></td>
+                        <td><span id="b-t3-run"></span></td>
+                        <td><span id="b-t3-diesel"></span></td>
+                        <td><span id="b-t3-freight"></span></td>
+                        <td class="c-amt"><span id="b-t3-amt"></span></td>
+                    </tr>
+                    <tr class="expense-row">
+                        <td colspan="2" class="nb"></td>
+                        <td colspan="2" class="c-part exp-lbl" id="b-t3-toll-lbl"></td>
+                        <td colspan="5" class="nb"></td>
+                        <td class="c-amt"><span id="b-t3-toll"></span></td>
+                    </tr>
+                    <!-- ─ Trip 4 ─ -->
+                    <tr class="data-row">
+                        <td class="c-date"><span id="b-t4-date"></span></td>
+                        <td><span id="b-t4-dc"></span></td>
+                        <td class="c-num"><span id="b-t4-chicks"></span></td>
+                        <td class="c-part"><span id="b-t4-place"></span></td>
+                        <td><span id="b-t4-start"></span></td>
+                        <td><span id="b-t4-close"></span></td>
+                        <td><span id="b-t4-run"></span></td>
+                        <td><span id="b-t4-diesel"></span></td>
+                        <td><span id="b-t4-freight"></span></td>
+                        <td class="c-amt"><span id="b-t4-amt"></span></td>
+                    </tr>
+                    <tr class="expense-row">
+                        <td colspan="2" class="nb"></td>
+                        <td colspan="2" class="c-part exp-lbl" id="b-t4-toll-lbl"></td>
+                        <td colspan="5" class="nb"></td>
+                        <td class="c-amt"><span id="b-t4-toll"></span></td>
+                    </tr>
+                    <!-- ─ Trip 5 ─ -->
+                    <tr class="data-row">
+                        <td class="c-date"><span id="b-t5-date"></span></td>
+                        <td><span id="b-t5-dc"></span></td>
+                        <td class="c-num"><span id="b-t5-chicks"></span></td>
+                        <td class="c-part"><span id="b-t5-place"></span></td>
+                        <td><span id="b-t5-start"></span></td>
+                        <td><span id="b-t5-close"></span></td>
+                        <td><span id="b-t5-run"></span></td>
+                        <td><span id="b-t5-diesel"></span></td>
+                        <td><span id="b-t5-freight"></span></td>
+                        <td class="c-amt"><span id="b-t5-amt"></span></td>
+                    </tr>
+                    <tr class="expense-row">
+                        <td colspan="2" class="nb"></td>
+                        <td colspan="2" class="c-part exp-lbl" id="b-t5-toll-lbl"></td>
+                        <td colspan="5" class="nb"></td>
+                        <td class="c-amt"><span id="b-t5-toll"></span></td>
+                    </tr>
+                    <!-- ─ Trip 6 ─ -->
+                    <tr class="data-row">
+                        <td class="c-date"><span id="b-t6-date"></span></td>
+                        <td><span id="b-t6-dc"></span></td>
+                        <td class="c-num"><span id="b-t6-chicks"></span></td>
+                        <td class="c-part"><span id="b-t6-place"></span></td>
+                        <td><span id="b-t6-start"></span></td>
+                        <td><span id="b-t6-close"></span></td>
+                        <td><span id="b-t6-run"></span></td>
+                        <td><span id="b-t6-diesel"></span></td>
+                        <td><span id="b-t6-freight"></span></td>
+                        <td class="c-amt"><span id="b-t6-amt"></span></td>
+                    </tr>
+                    <tr class="expense-row">
+                        <td colspan="2" class="nb"></td>
+                        <td colspan="2" class="c-part exp-lbl" id="b-t6-toll-lbl"></td>
+                        <td colspan="5" class="nb"></td>
+                        <td class="c-amt"><span id="b-t6-toll"></span></td>
+                    </tr>
+                    <!-- ─ Kerala Checkpost ─ -->
+                    <tr class="expense-row kerala-row">
+                        <td colspan="2" class="nb"></td>
+                        <td colspan="2" class="c-part exp-lbl">KERALA CHECKPOST EXPENSES</td>
+                        <td colspan="5" class="nb"></td>
+                        <td class="c-amt"><span id="out-kerala">280</span></td>
+                    </tr>
+                    <!-- ─ Spacer (fills unused space) ─ -->
+                    <tr class="spacer-row"><td colspan="10"></td></tr>
+                    <!-- ─ Diesel Average ─ -->
+                    <tr class="subtotal-row">
+                        <td colspan="6" class="nb-full"></td>
+                        <td colspan="3" class="label-r">DIESEL AVERAGE RATE :–</td>
+                        <td class="c-amt"><span id="out-diesel-avg">93.38</span></td>
+                    </tr>
+                    <!-- ─ Grand Total ─ -->
+                    <tr class="grand-total-row">
+                        <td colspan="9" class="total-lbl">TOTAL</td>
+                        <td class="c-amt total-val" id="out-final-total">44491</td>
+                    </tr>
+                </tbody>
+              </table>
+            </div><!-- /bill-body -->
+
+            <!-- ═══ FOOTER (fixed) ═══ -->
+            <div class="bill-footer">
+                <div class="words-row">
+                    <span class="words-tag">Rupees in Words :–</span>
+                    <span class="words-val" id="out-words">FORTY FOUR THOUSAND FOUR HUNDRED AND NINETY ONE ONLY.</span>
+                </div>
+                <div class="footer-cols">
+                    <div class="bank-block">
+                        <table class="bank-tbl">
+                            <tr><td class="bk-key">Cheque / DD in Favour of</td><td>:&nbsp; AUS TRANSPORT</td></tr>
+                            <tr><td class="bk-key">A/c No.</td><td>:&nbsp; 50200051395768</td></tr>
+                            <tr><td class="bk-key">IFSC Code</td><td>:&nbsp; HDFC0002786</td></tr>
+                            <tr><td class="bk-key">Bank / Branch</td><td>:&nbsp; HDFC BANK – DHARAPURAM</td></tr>
+                        </table>
+                    </div>
+                    <div class="sig-block">
+                        <div class="sig-for">For &nbsp;<b>A U S TRANSPORT</b></div>
+                        <div class="sig-space"></div>
+                        <div class="sig-line"></div>
+                        <div class="sig-txt">Proprietor / Authorised Signatory</div>
+                    </div>
+                </div>
+            </div><!-- /bill-footer -->
+
+        </div><!-- /a4-container -->
+        </div><!-- /preview-wrapper -->
+    </div><!-- /preview-panel -->
+
+</div><!-- /workspace-screen -->
+
+<script src="script.js"></script>
+</body>
+</html>
+
